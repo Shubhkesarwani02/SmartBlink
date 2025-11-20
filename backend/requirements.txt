@@ -15,11 +15,19 @@ geopandas==0.14.2
 shapely==2.0.2
 pyproj==3.6.1
 geopy==2.4.1
-h3==3.7.6
+h3>=4.0.0  # H3 v4+ has prebuilt wheels (easier install)
 
 # Data Processing
 pandas==2.1.4
 numpy==1.26.3
+
+# Visualization & Notebooks
+matplotlib==3.8.2
+seaborn==0.13.1
+plotly==5.18.0
+jupyter==1.0.0
+ipykernel==6.28.0
+folium==0.15.1
 
 # ML & Clustering
 scikit-learn==1.4.0

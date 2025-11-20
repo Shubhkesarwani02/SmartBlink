@@ -1,11 +1,44 @@
 # SmartBlink ML Module
 
-This directory contains machine learning algorithms for store placement optimization.
+This directory contains machine learning algorithms and data processing pipelines for store placement optimization.
+
+## Phase 2: Data Processing & Demand Aggregation
+
+### Quick Start
+```bash
+# 1. Start Docker services
+docker-compose up -d postgres redis
+
+# 2. Activate virtual environment
+source venv/bin/activate
+
+# 3. Open notebook in VS Code
+# File: ml/phase2_data_processing.ipynb
+# Kernel: SmartBlink (venv)
+# Run All Cells
+
+# 4. View outputs
+open ../outputs/phase2_interactive_map.html
+```
+
+### What It Does
+- Loads 10K+ orders from PostgreSQL
+- Applies H3 hexagonal indexing (resolution 8)
+- Aggregates demand by hexagon (order count, avg value, peak hour)
+- Calculates distances to nearest store
+- Generates visualizations (heatmaps, interactive maps)
+- Updates PostGIS demand_cells table
+
+### Documentation
+- See `docs/PHASE2_COMPLETE.md` for full guide
+- Expected runtime: ~1-2 minutes
+- Outputs: `outputs/*.png`, `outputs/*.html`
 
 ## Structure
 
 ```
 ml/
+├── phase2_data_processing.ipynb  # Phase 2: Data pipeline (NEW)
 ├── clustering/         # Clustering algorithms
 │   ├── kmeans.py      # KMeans implementation
 │   └── hdbscan.py     # HDBSCAN density clustering
