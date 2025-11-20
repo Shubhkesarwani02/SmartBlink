@@ -10,62 +10,137 @@ datasource db {
   extensions = [postgis]
 }
 
+// Stores - Physical dark store locations
 model Store {
-  id        Int      @id @default(autoincrement())
-  name      String
-  location  Unsupported("geometry(Point, 4326)")
-  address   String?
-  isActive  Boolean  @default(true) @map("is_active")
-  capacity  Int?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id            Int      @id @default(autoincrement())
+  name          String
+  location      Unsupported("geometry(Point, 4326)")
+  address       String?
+  city          String?
+  isActive      Boolean  @default(true) @map("is_active")
+  capacity      Int?     // Daily order capacity
+  monthlyRent   Float?   @map("monthly_rent")
+  setupCost     Float?   @map("setup_cost")
+  openedAt      DateTime? @map("opened_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  orders        Order[]
+  isochrones    Isochrone[]
 
   @@map("stores")
   @@index([location], type: Gist)
+  @@index([isActive])
 }
 
+// Orders - Historical order data with geolocation
 model Order {
-  id          Int      @id @default(autoincrement())
-  location    Unsupported("geometry(Point, 4326)")
-  timestamp   DateTime
-  itemsCount  Int?     @map("items_count")
-  orderValue  Float?   @map("order_value")
-  customerId  String?  @map("customer_id")
-  deliveredAt DateTime? @map("delivered_at")
-  storeId     Int?     @map("store_id")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id              Int       @id @default(autoincrement())
+  location        Unsupported("geometry(Point, 4326)")
+  timestamp       DateTime
+  itemsCount      Int?      @map("items_count")
+  orderValue      Float?    @map("order_value")
+  customerId      String?   @map("customer_id")
+  deliveredAt     DateTime? @map("delivered_at")
+  deliveryTimeMin Int?      @map("delivery_time_min") // Actual delivery time
+  storeId         Int?      @map("store_id")
+  status          String?   @default("completed") // completed, cancelled, pending
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  store           Store?    @relation(fields: [storeId], references: [id])
 
   @@map("orders")
   @@index([location], type: Gist)
   @@index([timestamp])
+  @@index([storeId])
+  @@index([status])
 }
 
-model CandidateLocation {
+// Demand Cells - Spatial grid aggregating demand patterns
+model DemandCell {
+  id              Int      @id @default(autoincrement())
+  cellGeometry    Unsupported("geometry(Polygon, 4326)") @map("cell_geometry")
+  h3Index         String?  @map("h3_index") // H3 hexagon index for hierarchical spatial indexing
+  demandScore     Float    @map("demand_score") // Normalized demand intensity
+  ordersCount     Int      @map("orders_count")
+  totalOrderValue Float?   @map("total_order_value")
+  avgOrderValue   Float?   @map("avg_order_value")
+  peakHour        Int?     @map("peak_hour") // Hour of day with most orders (0-23)
+  periodStart     DateTime @map("period_start")
+  periodEnd       DateTime @map("period_end")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("demand_cells")
+  @@index([cellGeometry], type: Gist)
+  @@index([h3Index])
+  @@index([demandScore])
+  @@index([periodStart, periodEnd])
+}
+
+// Candidates - AI-suggested optimal store locations
+model Candidate {
   id                      Int      @id @default(autoincrement())
   location                Unsupported("geometry(Point, 4326)")
-  score                   Float
+  score                   Float    // Overall optimization score
   coverageAreaKm2         Float    @map("coverage_area_km2")
   estimatedOrdersCovered  Int      @map("estimated_orders_covered")
   avgDeliveryTimeMinutes  Float    @map("avg_delivery_time_minutes")
   roiEstimate             Float?   @map("roi_estimate")
-  optimizationRunId       String?  @map("optimization_run_id")
+  monthlyRevenueEstimate  Float?   @map("monthly_revenue_estimate")
+  rank                    Int?     // Ranking among all candidates in the job
+  optimizationJobId       Int      @map("optimization_job_id")
+  algorithm               String?  // kmeans, hdbscan, p-median, etc.
+  metadata                Json?    // Additional algorithm-specific data
   createdAt               DateTime @default(now()) @map("created_at")
 
-  @@map("candidate_locations")
+  optimizationJob         OptimizationJob @relation(fields: [optimizationJobId], references: [id], onDelete: Cascade)
+
+  @@map("candidates")
   @@index([location], type: Gist)
   @@index([score])
+  @@index([optimizationJobId])
 }
 
-model DemandGrid {
-  id           Int      @id @default(autoincrement())
-  gridCell     Unsupported("geometry(Polygon, 4326)") @map("grid_cell")
-  demandScore  Float    @map("demand_score")
-  ordersCount  Int      @map("orders_count")
-  periodStart  DateTime @map("period_start")
-  periodEnd    DateTime @map("period_end")
-  createdAt    DateTime @default(now()) @map("created_at")
+// Optimization Jobs - Track optimization runs and their parameters
+model OptimizationJob {
+  id                    Int      @id @default(autoincrement())
+  status                String   @default("pending") // pending, running, completed, failed
+  algorithm             String   // kmeans, hdbscan, p-median, k-center
+  numStores             Int      @map("num_stores")
+  maxDeliveryTimeMin    Int      @map("max_delivery_time_min")
+  useExistingStores     Boolean  @default(true) @map("use_existing_stores")
+  constraints           Json?    // Custom constraints (budget, regions, etc.)
+  startedAt             DateTime? @map("started_at")
+  completedAt           DateTime? @map("completed_at")
+  errorMessage          String?  @map("error_message")
+  resultMetrics         Json?    @map("result_metrics") // Coverage %, avg time, etc.
+  createdBy             String?  @map("created_by") // User/system identifier
+  createdAt             DateTime @default(now()) @map("created_at")
 
-  @@map("demand_grid")
-  @@index([gridCell], type: Gist)
-  @@index([periodStart, periodEnd])
+  candidates            Candidate[]
+
+  @@map("optimization_jobs")
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Isochrones - Time-based coverage zones for stores
+model Isochrone {
+  id              Int      @id @default(autoincrement())
+  storeId         Int      @map("store_id")
+  timeMinutes     Int      @map("time_minutes") // 5, 10, 15 minute zones
+  geometry        Unsupported("geometry(Polygon, 4326)")
+  areaKm2         Float?   @map("area_km2")
+  populationEst   Int?     @map("population_est") // Estimated population in zone
+  ordersInZone    Int?     @map("orders_in_zone") // Historical orders within zone
+  calculatedAt    DateTime @default(now()) @map("calculated_at")
+  source          String?  @default("osrm") // osrm, openroute, manual
+
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@map("isochrones")
+  @@index([geometry], type: Gist)
+  @@index([storeId])
+  @@index([timeMinutes])
+  @@unique([storeId, timeMinutes, source])
 }
