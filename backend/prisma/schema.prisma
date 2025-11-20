@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-py"
+  interface = "asyncio"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  extensions = [postgis]
+}
+
+model Store {
+  id        Int      @id @default(autoincrement())
+  name      String
+  location  Unsupported("geometry(Point, 4326)")
+  address   String?
+  isActive  Boolean  @default(true) @map("is_active")
+  capacity  Int?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("stores")
+  @@index([location], type: Gist)
+}
+
+model Order {
+  id          Int      @id @default(autoincrement())
+  location    Unsupported("geometry(Point, 4326)")
+  timestamp   DateTime
+  itemsCount  Int?     @map("items_count")
+  orderValue  Float?   @map("order_value")
+  customerId  String?  @map("customer_id")
+  deliveredAt DateTime? @map("delivered_at")
+  storeId     Int?     @map("store_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("orders")
+  @@index([location], type: Gist)
+  @@index([timestamp])
+}
+
+model CandidateLocation {
+  id                      Int      @id @default(autoincrement())
+  location                Unsupported("geometry(Point, 4326)")
+  score                   Float
+  coverageAreaKm2         Float    @map("coverage_area_km2")
+  estimatedOrdersCovered  Int      @map("estimated_orders_covered")
+  avgDeliveryTimeMinutes  Float    @map("avg_delivery_time_minutes")
+  roiEstimate             Float?   @map("roi_estimate")
+  optimizationRunId       String?  @map("optimization_run_id")
+  createdAt               DateTime @default(now()) @map("created_at")
+
+  @@map("candidate_locations")
+  @@index([location], type: Gist)
+  @@index([score])
+}
+
+model DemandGrid {
+  id           Int      @id @default(autoincrement())
+  gridCell     Unsupported("geometry(Polygon, 4326)") @map("grid_cell")
+  demandScore  Float    @map("demand_score")
+  ordersCount  Int      @map("orders_count")
+  periodStart  DateTime @map("period_start")
+  periodEnd    DateTime @map("period_end")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("demand_grid")
+  @@index([gridCell], type: Gist)
+  @@index([periodStart, periodEnd])
+}
