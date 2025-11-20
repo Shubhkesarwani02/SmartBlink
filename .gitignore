@@ -71,6 +71,10 @@ yarn-error.log*
 /osrm/data/*.osrm*
 /osrm/data/*.pbf
 
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
 # Misc
 .coverage
 htmlcov/
