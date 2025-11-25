@@ -1,0 +1,23 @@
+# Virtual Environment
+venv/
+__pycache__/
+*.pyc
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Output files
+outputs/
+*.png
+*.html
+*.pdf
+
+# Data files (if needed)
+data/
+*.csv
+*.parquet
+
+# Environment variables
+.env
+.env.local

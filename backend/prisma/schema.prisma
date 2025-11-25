@@ -58,17 +58,18 @@ model Order {
 
 // Demand Cells - Spatial grid aggregating demand patterns
 model DemandCell {
-  id              Int      @id @default(autoincrement())
-  cellGeometry    Unsupported("geometry(Polygon, 4326)") @map("cell_geometry")
-  h3Index         String?  @map("h3_index") // H3 hexagon index for hierarchical spatial indexing
-  demandScore     Float    @map("demand_score") // Normalized demand intensity
-  ordersCount     Int      @map("orders_count")
-  totalOrderValue Float?   @map("total_order_value")
-  avgOrderValue   Float?   @map("avg_order_value")
-  peakHour        Int?     @map("peak_hour") // Hour of day with most orders (0-23)
-  periodStart     DateTime @map("period_start")
-  periodEnd       DateTime @map("period_end")
-  createdAt       DateTime @default(now()) @map("created_at")
+  id                      Int      @id @default(autoincrement())
+  cellGeometry            Unsupported("geometry(Polygon, 4326)") @map("cell_geometry")
+  h3Index                 String?  @map("h3_index") // H3 hexagon index for hierarchical spatial indexing
+  demandScore             Float    @map("demand_score") // Normalized demand intensity
+  ordersCount             Int      @map("orders_count")
+  totalOrderValue         Float?   @map("total_order_value")
+  avgOrderValue           Float?   @map("avg_order_value")
+  peakHour                Int?     @map("peak_hour") // Hour of day with most orders (0-23)
+  distanceToNearestStore  Float?   @map("distance_to_nearest_store") // Distance in meters
+  periodStart             DateTime @map("period_start")
+  periodEnd               DateTime @map("period_end")
+  createdAt               DateTime @default(now()) @map("created_at")
 
   @@map("demand_cells")
   @@index([cellGeometry], type: Gist)
